@@ -1,9 +1,11 @@
-import mongoose from 'mongoose'
+import mongoose from 'mongoose';
+import mongooseAggregatePaginate from 'mongoose-aggregate-paginate-v2'
 
-const dressSchema = mongoose.Schema({
+const dressSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: true
+        required: true,
+        index: true
     },
 
     image:{
@@ -13,7 +15,7 @@ const dressSchema = mongoose.Schema({
     },
 
     price: {
-        type: String,
+        type: Number,
         required: true
     },
 
@@ -23,6 +25,8 @@ const dressSchema = mongoose.Schema({
     }
 }, {timestamps: true})
 
+// Mongoose Aggregate Pipeline
+dressSchema.plugin(mongooseAggregatePaginate);
 
 const Dress = mongoose.model("Dress", dressSchema);
 

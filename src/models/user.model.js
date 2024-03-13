@@ -12,7 +12,6 @@ const userSchema = new mongoose.Schema({
         type: Number,
         required: true,
         unique: true,
-        length: 10
     },
 
     email:{
@@ -21,21 +20,19 @@ const userSchema = new mongoose.Schema({
         unique: true
     },
 
+    password:{
+        type: String,
+        required: true
+    },
+
     refreshToken:{
         type: String,
     },
-
-    userDress: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Dress"
-        }
-    ]
 }, {timestamps: true})
 
-userSchema.pre("save", async function () {
+userSchema.pre("save", async function (next) {
     if(this.isModified("password")){
-        this.password = await bcrypt.hash(this.password, process.env.BCRYPT_HASH_NUMBER);
+        this.password = await bcrypt.hash(this.password, 10);
     }
 
     next();
