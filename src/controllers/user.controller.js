@@ -7,6 +7,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import jwt from "jsonwebtoken"
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
@@ -35,7 +36,6 @@ const generateAccessAndRefreshToken = async (userId) => {
 const registerUser = asyncHandler( async (req, res) => {
     try {
         const {name, phoneNumber, email, password} = req.body;
-        
         if(!(name && phoneNumber && email && password)){
             throw new ApiError(400, "All fields are required");
         }
@@ -83,6 +83,10 @@ const loginUser = asyncHandler( async (req, res) => {
         const user = await User.findOne({phoneNumber});
 
         if(!user){
+            return res.status(400)
+            .json(
+                new ApiError(404, "User not exist")
+            )
             throw new ApiError(400, "User not exist");
         }
 
@@ -392,39 +396,58 @@ const particularCustomDress = asyncHandler( async(req, res) => {
 } )
 
 
-// Updating price and stage of user custom dress
-const updatingUserCustomDressPrice = asyncHandler( async(req, res) => {
+// is User Auth
+const isUserAuth = asyncHandler( async (req, res) => {
     try {
-        
-        const userId = req.user._id;
-        const { dressName, price } = req.body;
-
-        const userDress = await USERDRESS.findOneAndUpdate({dressName},
-            {
-                $set: {price, stage: true}
-            },
-            {
-                new: true
+        const isAccessToken = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
+    
+        if(!isAccessToken){
+            let isRefreshToken = req.cookies?.refreshToken;
+            if(!isRefreshToken){
+                return res.status(400).json({
+                    message: "Plz Login or Sign Up",
+                    success: false
+                })
             }
-            );
+            const decode_val = jwt.verify(isRefreshToken, process.env.REFRESH_TOKEN_SECRET_KEY);
+            if(!decode_val){
+                return res.status(400).json({
+                    message: "Plz Login or Sign Up",
+                    success: false
+                })
+            }
 
-        if(!userDress){
-            throw new ApiError(400, "User Dress Not Found")
+            const {accessToken, refreshToken} = await generateAccessAndRefreshToken(decode_val._id);
+
+            const options = {
+                httpOnly: true,
+                secure: true
+            }
+
+            return res.status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", refreshToken, options)
+            .json({
+                message: "User Authorized",
+                success: true
+            })
         }
-
-
-        return res.status(200).
-        json(
-            new ApiResponse(200, {userDress}, "User price and Stage Updated Successfully")
-        )
-
+        else{
+            res.status(200)
+            .json({
+                message: "User Authorized",
+                success: true
+            })
+        }
     } catch (error) {
-        throw new ApiError(400, error?.message || "User Price and Stage Not Updated")
+        console.log(error?.message || "NOT AUTH USER");
     }
 })
 
+
+
+
 export { registerUser, loginUser, logoutUser,
         userDressUpload, allDress, particularDressSection,
-        orderCompleted, allCustomDresses, particularCustomDress,
-        updatingUserCustomDressPrice
+        orderCompleted, allCustomDresses, particularCustomDress, isUserAuth
     }
