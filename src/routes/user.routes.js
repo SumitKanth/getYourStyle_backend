@@ -1,7 +1,6 @@
 import express from 'express';
 import { registerUser, loginUser, logoutUser, userDressUpload, 
-particularDressSection, orderCompleted, allCustomDresses, particularCustomDress,
-allDress, isUserAuth } from '../controllers/user.controller.js';
+particularDressSection, orderCompleted, allCustomDresses, particularCustomDress, isUserAuth } from '../controllers/user.controller.js';
 import { validateUser } from '../middlewares/auth.middleware.js';
 import { upload } from '../middlewares/multer.middleware.js';
 
@@ -18,8 +17,6 @@ router.route("/user-dress").post(
     upload.single("dressImage"),
     userDressUpload
 );
-
-router.route("/all-dress").post(validateUser, allDress);
 
 router.route("/particular-dress").post(validateUser, particularDressSection);
 

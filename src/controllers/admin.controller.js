@@ -76,8 +76,25 @@ const dressUpload = asyncHandler(async (req, res) => {
     }
 })
 
-//  
+// Route for fetching all dresses
+const allDress = asyncHandler( async(req, res) => {
+    try {
+        
+        const dresses = await Dress.find();
+
+        if(!dresses){
+            throw new ApiError(400, "All dresses not fetched")
+        }
+
+        return res.status(200).json(
+            new ApiResponse(200, dresses, "All dresses Fetched Successfully")
+        )
+
+    } catch (error) {
+        throw new ApiError(400, error?.message || "All Dresses Not Feteched")
+    }
+})
 
 export {
-    updatingUserCustomDressPrice, dressUpload
+    updatingUserCustomDressPrice, dressUpload, allDress
 }

@@ -1,6 +1,6 @@
 import express from 'express'
 import { validateUser } from '../middlewares/auth.middleware.js';
-import { updatingUserCustomDressPrice, dressUpload } from '../controllers/admin.controller.js';
+import { updatingUserCustomDressPrice, dressUpload, allDress } from '../controllers/admin.controller.js';
 import { upload } from '../middlewares/multer.middleware.js';
 
 const router = express.Router();
@@ -13,5 +13,6 @@ router.route('/dress-upload').post(
     dressUpload
 )
 
+router.route("/all-dress").get(allDress);
 
 export default router
