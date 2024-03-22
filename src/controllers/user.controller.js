@@ -158,8 +158,6 @@ const logoutUser = asyncHandler( async (req, res) => {
 
 //  For User To Upload Dresses Which will show in Cart Page Of User And Admin Page
 const userDressUpload = asyncHandler( async (req, res) => {
-    let dressNamePresentErr = "Same Dress Name is already present in your cart, so plz provide unique dress name"
-    let isDressNamePresent = false;
     try {
         let { dressName, phoneNumber, details } = req.body;
         const userId = req.user?._id;
@@ -171,31 +169,24 @@ const userDressUpload = asyncHandler( async (req, res) => {
         }
 
         phoneNumber = Number(phoneNumber)
-        const userByNumber = await USERDRESS.aggregate([
+        const dressCount = await USERDRESS.aggregate([
             {
                 $match:{
                     phoneNumber: phoneNumber
                 }
-            },
+            }
         ])
 
-        for(let i=0; i<userByNumber.length; i++){
-            if(userByNumber[i].dressName === dressName){
-                isDressNamePresent = true;
-                break;
-            }
-        }
         
-        if(isDressNamePresent){
-            throw new ApiError(400, dressNamePresentErr)
-        }
+        
 
         console.log("Dress before uploded localpath");
-        const dressImageLocalPath = req.file?.path;
+        console.log("REQ FILE: ", req.file)
+        const dressImageLocalPath = await req.file?.path;
         console.log("Dress After uploded localpath");
         console.log(dressImageLocalPath)
         if(!dressImageLocalPath){
-            throw new ApiError(400, "Uploaded of Dress image failed");
+            throw new ApiError(400, "Uploaded of Dress image in local path failed");
         }
         
         console.log("Dress after after uploaded localpath");
@@ -205,7 +196,7 @@ const userDressUpload = asyncHandler( async (req, res) => {
         if(!dressImage){
             throw new ApiError(400, "Dress Image Not Uploaded In Cloudinary");
         }
-
+        
         const userDress = await USERDRESS.create({
             dressName,
             phoneNumber,
@@ -221,10 +212,7 @@ const userDressUpload = asyncHandler( async (req, res) => {
 
         
     } catch (error) {
-        if(isDressNamePresent){
-            throw new ApiError(400, dressNamePresentErr)
-        }
-        else throw new ApiError(400, error?.message || "Dress Not Uploaded")
+        throw new ApiError(400, error?.message || "Dress Not Uploaded")
     }
 })
 
@@ -263,64 +251,6 @@ const particularDressSection = asyncHandler( async (req, res) => {
 })
 
 
-// Route When Order Get Completed
-const orderCompleted = asyncHandler( async (req, res) => {
-    try {
-        const { phoneNumber, dressName } = req.body;
-
-        if(!(phoneNumber && dressName)){
-            throw new ApiError(400, "Provide phoneNumber and dressName")
-        }
-
-        const user = await User.findOne({phoneNumber});
-        if(!user){
-            throw new ApiError(400, "Unauthorized Access")
-        }
-
-        console.log("Before user dress finding");
-        const dressUser = await DRESSUSER.findOne({
-            $and: [{phoneNumber}, {dressName}]
-        });
-
-
-        if(!dressUser)
-            throw new ApiError(400, "Phone Number or Dress Name is wrong")
-        
-        console.log("Before Creatintg User Dress Completed");
-        console.log("Number Type: ", typeof(phoneNumber));
-
-        console.log("dressUser: ", dressUser)
-
-        const userCustomDress = await USERCUSTOMDRESS.create({
-            dressName,
-            phoneNumber,
-            dressImage: dressUser.dressImage,
-            price: dressUser.price,
-            details: dressUser.details || "Dress Image"
-        })
-        
-        console.log("After Creatintg User Dress Completed");
-
-        if(!userCustomDress)
-            throw new ApiError(400, "user dress is not completed")
-
-        const orderCompleted = await DRESSUSER.deleteOne({
-            $and: [{phoneNumber}, {dressName}]
-        })
-
-        if(!orderCompleted){
-            throw new ApiError(400, "Dress Not Present")
-        }
-
-        return res.status(201)
-        .json(
-            new ApiResponse(201, {userCustomDress}, "Order Completed")
-        )
-
-    } catch (error) {
-        throw new ApiError(400, error?.message || "Order Not Completed")
-    }
-})
 
 
 // Route for user all coustom design dress
@@ -399,6 +329,9 @@ const isUserAuth = asyncHandler( async (req, res) => {
             }
 
             const {accessToken, refreshToken} = await generateAccessAndRefreshToken(decode_val._id);
+            const decode_acc = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET_KEY);
+            
+            const user = await User.findById(decode_acc._id).select("-password -refreshToken");
 
             const options = {
                 httpOnly: true,
@@ -410,25 +343,127 @@ const isUserAuth = asyncHandler( async (req, res) => {
             .cookie("refreshToken", refreshToken, options)
             .json({
                 message: "User Authorized",
+                data: {user},
                 success: true
             })
         }
         else{
+            const decode_acc = jwt.verify(isAccessToken, process.env.ACCESS_TOKEN_SECRET_KEY);
+
+            if(!decode_acc){
+                return res.json(
+                    {
+                        message: "Plz Login Fisrt",
+                        success: false
+                    }
+                )
+            }
+            
+            const user = await User.findById(decode_acc._id).select("-password -refreshToken");
+
             res.status(200)
             .json({
                 message: "User Authorized",
+                data: {user},
                 success: true
             })
-        }
+        }   
     } catch (error) {
         console.log(error?.message || "NOT AUTH USER");
     }
 })
 
 
+// User Who select dress from dress section 
+const userDressFromDressSection = asyncHandler(async (req, res) => {
+    try {
+        let { dressName, phoneNumber, dressImage, price, details } = req.body;
 
+        if(!(dressName && phoneNumber && dressImage && price && details)){
+            throw new ApiError(500, "Server Error, All Field Required")
+        }
+
+        phoneNumber = Number(phoneNumber)
+        price = Number(price)
+        const user_dress = await USERDRESS.create({
+            dressName,
+            phoneNumber,
+            dressImage,
+            price,
+            details,
+            stage: false,
+        })
+
+        if(!user_dress){
+            throw new ApiError(500, "Server Error, Dress not Uploaded")
+        }
+
+        res.status(200)
+        .json(
+            new ApiResponse(200, user_dress, "Dress uploaded Successfully")
+        )
+
+    } catch (error) {
+        throw new ApiError(400, error);
+    }
+})
+
+
+
+// Getting particular User Dress how ordered or get custom dress design and data From USERDRESS Section For Cart of user
+const particularUserDressFromUserDress = asyncHandler( async (req, res) => {
+    try {
+        const user_id = req.user._id;
+    
+        const user = await User.findById(user_id);
+    
+        if(!user){
+            throw new ApiError(400, "Un Authorized Access")
+        }
+    
+        const phoneNumber = user.phoneNumber;
+
+        const userDress = await USERDRESS.aggregate([
+            {
+                $match: {
+                    phoneNumber: phoneNumber
+                }
+            }
+        ])
+
+        res.status(200)
+        .json(
+            new ApiResponse(200, userDress, "User Dress Fetched Successfully")
+        )
+    } catch (error) {
+        throw new ApiError(400, error?.message || "Un Authorized Access")
+    }
+
+
+})
+
+
+// Delete Order From Cart For User
+const deleteOrder = asyncHandler( async (req, res) => {
+    try {
+        const {dress_id} = req.body;
+        console.log(dress_id)
+
+        const user = await USERDRESS.findOne({_id: dress_id});
+
+        await USERDRESS.findOneAndDelete({_id: dress_id})
+
+        res.status(200)
+        .json(
+            new ApiResponse(200, {}, "Order Deleted Successfully")
+        )
+    } catch (error) {
+        console.log(error)
+    }
+})
 
 export { registerUser, loginUser, logoutUser,
         userDressUpload, particularDressSection,
-        orderCompleted, allCustomDresses, particularCustomDress, isUserAuth
+        allCustomDresses, particularCustomDress, isUserAuth,
+        userDressFromDressSection, particularUserDressFromUserDress, deleteOrder
     }

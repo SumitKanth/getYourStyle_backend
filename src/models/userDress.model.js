@@ -1,10 +1,12 @@
 import mongoose from "mongoose";
 import mongooseAggregatePaginate from 'mongoose-aggregate-paginate-v2';
 
+// Ye Cart m rahega Jb Order Complete ho jaega to user and uska dress userCustomDress m daal denge or yaha se delete kr denge.
 const userDressSchema = new mongoose.Schema({
     dressName: {
         type: String,
-        required: true
+        required: true,
+        lowercase: true
     },
 
     phoneNumber:{
@@ -26,6 +28,11 @@ const userDressSchema = new mongoose.Schema({
     details: {
         type: String,
         default: ""
+    },
+
+    orderInfo:{
+       type: String,
+       default: ""
     },
 
     stage:{

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import mongooseAggregatePaginate from 'mongoose-aggregate-paginate-v2';
 
+// For User Who select dress from dress section and whose order got successfully completed
 const userCustomDressSchema = new mongoose.Schema({
     dressName:{
         type: String,
